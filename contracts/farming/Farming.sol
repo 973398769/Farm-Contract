@@ -76,5 +76,129 @@ contract Farming is Ownable {
             totalDeposits : 0
         }));
     }
+    // Update the given pool's ERC20 allocation point. Can only be called by the owner.
+    function set(uint256 _pid, uint256 _allocPoint, bool _withUpdate) public onlyOwner {
+        if (_withUpdate) {
+            massUpdatePools();
+        }
+        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+        poolInfo[_pid].allocPoint = _allocPoint;
+    }
 
+    // View function to see deposited LP for a user.
+    function deposited(uint256 _pid, address _user) external view returns (uint256) {
+        UserInfo storage user = userInfo[_pid][_user];
+        return user.amount;
+    }
+
+    function pending(uint256 _pid, address _user) extern view returns (uint256) {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+        uint256 accERC20PerShare = pool.accERC20PerShare;
+        uint256 lpSupply = pool.totalDeposit;
+
+        if (block.timestamp > pool.lastRewardTimestamp && lpSupply != 0) {
+            uint256 lastTimestamp = block.timestamp < endTimestamp ? block.timestamp : endTimestamp;
+            uint256 timestampToCompare = pool.lastRewardTimestamp < endTimestamp ? pool.lastRewardTimestamp : endTimestamp;
+            uint256 nrOfSeconds = lastTimestamp.sub(timestampToCompare);
+            uint256 erc20Reward = nrOfSeconds.mul(rewardPerSecond).mul(pool.allocPoint).div(totalAllocPoint);
+            accERC20PerShare = accERC20PerShare.add(erc20Reward.mul(1e36).div(lpSupply));
+        }
+        return user.amount.mul(accERC20PerShare).div(1e36).sub(user.rewardDebt);
+    }
+
+    // View function for total reward the farm has yet to pay out.
+    function totalPending() external view returns (uint256) {
+        if (block.timestamp <= startTimestamp) {
+            return 0;
+        }
+
+        uint256 lastTimestamp = block.timestamp < endTimestamp ? block.timestamp : endTimestamp;
+        return rewardPerSecond.mul(lastTimestamp - startTimestamp).sub(paidOut);
+    }
+
+    // Update reward variables for all pools. Be careful of gas spending!
+    function massUpdatePools() public {
+        uint256 length = poolInfo.length;
+        for (uint256 pid = 0; pid < length; ++pid) {
+            updatePool(pid);
+        }
+    }
+
+    // Update reward variables of the given pool to be up-to-date.
+    function updatePool(uint256 _pid) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        uint256 lastTimestamp = block.timestamp < endTimestamp ? block.timestamp : endTimestamp;
+
+        if (lastTimestamp <= pool.lastRewardTimestamp) {
+            return;
+        }
+        uint256 lpSupply = pool.totalDeposits;
+
+        if (lpSupply == 0) {
+            pool.lastRewardTimestamp = lastTimestamp;
+            return;
+        }
+
+        uint256 nrOfSeconds = lastTimestamp.sub(pool.lastRewardTimestamp);
+        uint256 erc20Reward = nrOfSeconds.mul(rewardPerSecond).mul(pool.allocPoint).div(totalAllocPoint);
+
+        pool.accERC20PerShare = pool.accERC20PerShare.add(erc20Reward.mul(1e36).div(lpSupply));
+        pool.lastRewardTimestamp = block.timestamp;
+    }
+
+    // Deposit LP tokens to Farm for ERC20 allocation.
+    function deposit(uint256 _pid, uint256 _amount) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][msg.sender];
+
+        updatePool(_pid);
+
+        if (user.amount > 0) {
+            uint256 pendingAmount = user.amount.mul(pool.accERC20PerShare).div(1e36).sub(user.rewardDebt);
+            erc20Transfer(msg.sender, pendingAmount);
+        }
+
+        pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+        pool.totalDeposits = pool.totalDeposits.add(_amount);
+
+        user.amount = user.amount.add(_amount);
+        user.rewardDebt = user.amount.mul(pool.accERC20PerShare).div(1e36);
+        emit Deposit(msg.sender, _pid, _amount);
+    }
+
+    // Withdraw LP tokens from Farm.
+    function withdraw(uint256 _pid, uint256 _amount) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        require(user.amount >= _amount, "withdraw: can't withdraw more than deposit");
+        updatePool(_pid);
+
+        uint256 pendingAmount = user.amount.mul(pool.accERC20PerShare).div(1e36).sub(user.rewardDebt);
+
+        erc20Transfer(msg.sender, pendingAmount);
+        user.amount = user.amount.sub(_amount);
+        user.rewardDebt = user.amount.mul(pool.accERC20PerShare).div(1e36);
+        pool.lpToken.safeTransfer(address(msg.sender), _amount);
+        pool.totalDeposits = pool.totalDeposits.sub(_amount);
+
+        emit Withdraw(msg.sender, _pid, _amount);
+    }
+
+    // Withdraw without caring about rewards. EMERGENCY ONLY.
+    function emergencyWithdraw(uint256 _pid) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
+        pool.totalDeposits = pool.totalDeposits.sub(user.amount);
+        emit EmergencyWithdraw(msg.sender, _pid, user.amount);
+        user.amount = 0;
+        user.rewardDebt = 0;
+    }
+
+    // Transfer ERC20 and update the required ERC20 to payout all rewards
+    function erc20Transfer(address _to, uint256 _amount) internal {
+        erc20.transfer(_to, _amount);
+        paidOut += _amount;
+    }
 }
