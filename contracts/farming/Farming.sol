@@ -19,7 +19,7 @@ contract Farming is Ownable {
         uint256 allocPoint; // How many allocation points assigned to this pool. ERC20s to distribute per block.
         uint256 lastRewardTimestamp; // Last timestamp that ERC20s distribution occurs.
         uint256 accERC20PerShare; // Accumulated ERC20s per share, times 1e36.
-        uint256 totalDeposit; // Total amount of tokens deposited at the moment (staked)
+        uint256 totalDeposits; // Total amount of tokens deposited at the moment (staked)
     }
     // Address of the ERC20 Token contract.
     IERC20 public erc20;
@@ -91,11 +91,11 @@ contract Farming is Ownable {
         return user.amount;
     }
 
-    function pending(uint256 _pid, address _user) extern view returns (uint256) {
+    function pending(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accERC20PerShare = pool.accERC20PerShare;
-        uint256 lpSupply = pool.totalDeposit;
+        uint256 lpSupply = pool.totalDeposits;
 
         if (block.timestamp > pool.lastRewardTimestamp && lpSupply != 0) {
             uint256 lastTimestamp = block.timestamp < endTimestamp ? block.timestamp : endTimestamp;
