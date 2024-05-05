@@ -15,7 +15,7 @@ contract Admin {
     }
 
     // Constructor to set initial admins during deployment
-    constructor (address [] memory _admins) onlyAdmin {
+    constructor (address [] memory _admins) public {
         for(uint i = 0; i < _admins.length; i++) {
             admins.push(_admins[i]);
             isAdmin[_admins[i]] = true;
@@ -26,7 +26,7 @@ contract Admin {
         // Can't add 0x address as an admin
         require(_adminAddress != address(0x0), "[RBAC] : Admin must be != than 0x0 address");
         // Can't add existing admin
-        require(!isAdmin[_address], "[RBAC]: Admin already exists");
+        require(!isAdmin[_adminAddress], "[RBAC]: Admin already exists");
         // Add admin to array of admins
         admins.push(_adminAddress);
         // Set mapping
