@@ -86,4 +86,36 @@ contract C2NSale is ReentrancyGuard {
     uint256 public portionVestingPrecision;
     // Max vesting time shift
     uint256 public maxVestingTimeShift;
+
+    // Restricting calls only to sale owner
+    modifier onlySaleOwner() {
+        require(msg.sender == sale.saleOwner, "OnlySaleOwner:: Restricted");
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(
+            admin.isAdmin(msg.sender),
+            "Only admin can call this function."
+        );
+        _;
+    }
+
+    // Events
+    event TokensSold(address user, uint256 amount);
+    event UserRegistered(address user);
+    event TokenPriceSet(uint256 newPrice);
+    event MaxParticipationSet(uint256 maxParticipation);
+    event TokensWithdrawn(address user, uint256 amount);
+    event SaleCreated(
+        address saleOwner,
+        uint256 tokenPriceInETH,
+        uint256 amountOfTokensToSell,
+        uint256 saleEnd
+    );
+    event StartTimeSet(uint256 startTime);
+    event RegistrationTimeSet(
+        uint256 registrationTimeStarts,
+        uint256 registrationTimeEnds
+    );
 }
