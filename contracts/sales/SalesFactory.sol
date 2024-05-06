@@ -34,5 +34,43 @@ contract SalesFactory {
         require(_allocationStaking != address(0));
         allocationStaking = _allocationStaking;
     }
-    
+
+    function deploySale() external onlyAdmin
+    {
+        C2NSale sale = new C2NSale(address(admin), allocationStaking);
+
+        isSaleCreatedThroughFactory[address(sale)] = true;
+        allSales.push(address(sale));
+
+        emit SaleDeployed(address(sale));
+    }
+
+    // Function to return number of pools deployed
+    function getNumberOfSalesDeployed() external view returns (uint) {
+        return allSales.length;
+    }
+
+    // Function
+    function getLastDeployedSale() external view returns (address) {
+        //
+        if(allSales.length > 0) {
+            return allSales[allSales.length - 1];
+        }
+        return address(0);
+    }
+
+    // Function to get all sales
+    function getAllSales(uint startIndex, uint endIndex) external view returns (address[] memory) {
+        require(endIndex > startIndex, "Bad input");
+
+        address[] memory sales = new address[](endIndex - startIndex);
+        uint index = 0;
+
+        for(uint i = startIndex; i < endIndex; i++) {
+            sales[index] = allSales[i];
+            index++;
+        }
+
+        return sales;
+    }
 }

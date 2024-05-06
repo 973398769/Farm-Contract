@@ -66,5 +66,24 @@ contract C2NSale is ReentrancyGuard {
         uint256 numberOfRegistrants;
     }
 
-
+    // Sale
+    Sale public sale;
+    // Registration
+    Registration public registration;
+    // Number of users participated in the sale.
+    uint256 public numberOfParticipants;
+    // Mapping user to his participation
+    mapping(address => Participation) public userToParticipation;
+    // Mapping if user is registered or not
+    mapping(address => bool) public isRegistered;
+    // mapping if user is participated or not
+    mapping(address => bool) public isParticipated;
+    // Times when portions are getting unlocked
+    uint256[] public vestingPortionsUnlockTime;
+    // Percent of the participation user can withdraw
+    uint256[] public vestingPercentPerPortion;
+    //Precision for percent for portion vesting
+    uint256 public portionVestingPrecision;
+    // Max vesting time shift
+    uint256 public maxVestingTimeShift;
 }
