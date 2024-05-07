@@ -118,4 +118,41 @@ contract C2NSale is ReentrancyGuard {
         uint256 registrationTimeStarts,
         uint256 registrationTimeEnds
     );
+
+    // Constructor, always initialized through SalesFactory
+    constructor(address _admin, address _allocationStaking) public {
+        require(_admin != address(0));
+        require(_allocationStaking != address(0));
+        admin = IAdmin(_admin);
+        factory = ISalesFactory(msg.sender);
+        allocationStakingContract = IAllocationStaking(_allocationStaking);
+    }
+
+    /// @notice         Function to set vesting params
+    function setVestingParams(
+        uint256[] memory _unlockingTimes,
+        uint256[] memory _percents,
+        uint256 _maxVestingTimeShift
+    ) external onlyAdmin {
+        require(
+            vestingPercentPerPortion.length == 0 &&
+            vestingPortionsUnlockTime.length == 0
+        );
+        require(_unlockingTimes.length == _percents.length);
+        require(portionVestingPrecision > 0, "Safeguard for making sure setSaleParams get first called.");
+        require(_maxVestingTimeShift <= 30 days, "Maximal shift is 30 days.");
+
+        // Set max vesting time shift
+        maxVestingTimeShift = _maxVestingTimeShift;
+
+        uint256 sum;
+
+        for (uint256 i = 0; i < _unlockingTimes.length; i++) {
+            vestingPortionsUnlockTime.push(_unlockingTimes[i]);
+            vestingPercentPerPortion.push(_percents[i]);
+            sum += _percents[i];
+        }
+
+        require(sum == portionVestingPrecision, "Percent distribution issue.");
+    }
 }

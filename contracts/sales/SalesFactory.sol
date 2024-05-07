@@ -2,13 +2,13 @@
 pragma solidity 0.6.12;
 
 import "../interfaces/IAdmin.sol";
-import "./C2NSale.sol";
+import "./Sale.sol";
 
 contract SalesFactory {
     IAdmin public admin;
     address public allocationStaking;
 
-    mapping (address => bool) public isSalesCreatedThroughFactory;
+    mapping (address => bool) public isSaleCreatedThroughFactory;
 
     mapping (address => address) public saleOwnerToSale;
     mapping (address => address) public tokenToSale;
