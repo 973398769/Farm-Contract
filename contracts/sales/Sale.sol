@@ -155,4 +155,68 @@ contract C2NSale is ReentrancyGuard {
 
         require(sum == portionVestingPrecision, "Percent distribution issue.");
     }
+
+    function shiftVestingUnlockingTimes(uint256 timeToShift) external onlyAdmin
+    {
+        require(
+            timeToShift > 0 && timeToShift < maxVestingTimeShift,
+            "Shift must be nonzero and smaller than maxVestingTimeShift."
+        );
+
+        // Time can be shifted only once.
+        maxVestingTimeShift = 0;
+
+        for (uint256 i = 0; i < vestingPortionsUnlockTime.length; i++) {
+            vestingPortionsUnlockTime[i] = vestingPortionsUnlockTime[i].add(
+                timeToShift
+            );
+        }
+    }
+
+    /// @notice     Admin function to set sale parameters
+    function setSaleParams(
+        address _token,
+        address _saleOwner,
+        uint256 _tokenPriceInETH,
+        uint256 _amountOfTokensToSell,
+        uint256 _saleEnd,
+        uint256 _tokensUnlockTime,
+        uint256 _portionVestingPrecision,
+        uint256 _maxParticipation
+    ) external onlyAdmin {
+        require(!sale.isCreated, "setSaleParams: Sale is already created.");
+        require(
+            _saleOwner != address(0),
+            "setSaleParams: Sale owner address can not be 0."
+        );
+        require(
+            _tokenPriceInETH != 0 &&
+            _amountOfTokensToSell != 0 &&
+            _saleEnd > block.timestamp &&
+            _tokensUnlockTime > block.timestamp &&
+            _maxParticipation > 0,
+            "setSaleParams: Bad input"
+        );
+        require(_portionVestingPrecision >= 100, "Should be at least 100");
+
+        // Set params
+        sale.token = IERC20(_token);
+        sale.isCreated = true;
+        sale.saleOwner = _saleOwner;
+        sale.tokenPriceInETH = _tokenPriceInETH;
+        sale.amountOfTokensToSell = _amountOfTokensToSell;
+        sale.saleEnd = _saleEnd;
+        sale.tokensUnlockTime = _tokensUnlockTime;
+        sale.maxParticipation = _maxParticipation;
+
+        // Set portion vesting precision
+        portionVestingPrecision = _portionVestingPrecision;
+        // Emit event
+        emit SaleCreated(
+            sale.saleOwner,
+            sale.tokenPriceInETH,
+            sale.amountOfTokensToSell,
+            sale.saleEnd
+        );
+    }
 }
