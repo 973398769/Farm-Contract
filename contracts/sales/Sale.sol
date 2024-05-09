@@ -375,4 +375,19 @@ contract C2NSale is ReentrancyGuard {
             sale.amountOfTokensToSell
         );
     }
+
+    function checkParticipationSignature(
+        bytes memory signature,
+        address user,
+        uint256 amount
+    ) public view returns (bool) {
+        return
+            admin.isAdmin(
+            getParticipationSigner(
+                signature,
+                user,
+                amount
+            )
+        );
+    }
 }
