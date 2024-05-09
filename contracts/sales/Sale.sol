@@ -219,4 +219,160 @@ contract C2NSale is ReentrancyGuard {
             sale.saleEnd
         );
     }
+
+    // @notice     Function to retroactively set sale token address, can be called only once,
+    //             after initial contract creation has passed. Added as an options for teams which
+    //             are not having token at the moment of sale launch.
+    function setSaleToken(
+        address saleToken
+    )
+    external
+    onlyAdmin
+    {
+        require(address(sale.token) == address(0));
+        sale.token = IERC20(saleToken);
+    }
+
+
+    /// @notice     Function to set registration period parameters
+    function setRegistrationTime(
+        uint256 _registrationTimeStarts,
+        uint256 _registrationTimeEnds
+    ) external onlyAdmin {
+        require(sale.isCreated);
+        require(registration.registrationTimeStarts == 0);
+        require(
+            _registrationTimeStarts >= block.timestamp &&
+            _registrationTimeEnds > _registrationTimeStarts
+        );
+        require(_registrationTimeEnds < sale.saleEnd);
+
+        if (sale.saleStart > 0) {
+            require(_registrationTimeEnds < sale.saleStart, "registrationTimeEnds >= sale.saleStart is not allowed");
+        }
+
+        registration.registrationTimeStarts = _registrationTimeStarts;
+        registration.registrationTimeEnds = _registrationTimeEnds;
+
+        emit RegistrationTimeSet(
+            registration.registrationTimeStarts,
+            registration.registrationTimeEnds
+        );
+    }
+
+    function setSaleStart(
+        uint256 starTime
+    ) external onlyAdmin {
+        require(sale.isCreated, "sale is not created.");
+        require(sale.saleStart == 0, "setSaleStart: starTime is set already.");
+        require(starTime > registration.registrationTimeEnds, "start time should greater than registrationTimeEnds.");
+        require(starTime < sale.saleEnd, "start time should less than saleEnd time");
+        require(starTime >= block.timestamp, "start time should be in the future.");
+        sale.saleStart = starTime;
+
+        // Fire event
+        emit StartTimeSet(sale.saleStart);
+    }
+
+    /// @notice     Registration for sale.
+    /// @param      signature is the message signed by the backend
+    function registerForSale(bytes memory signature, uint256 pid)
+    external
+    {
+        require(
+            block.timestamp >= registration.registrationTimeStarts &&
+            block.timestamp <= registration.registrationTimeEnds,
+            "Registration gate is closed."
+        );
+        require(
+            checkRegistrationSignature(signature, msg.sender),
+            "Invalid signature"
+        );
+        require(
+            !isRegistered[msg.sender],
+            "User can not register twice."
+        );
+        isRegistered[msg.sender] = true;
+
+        // Lock users stake
+        allocationStakingContract.setTokensUnlockTime(
+            pid,
+            msg.sender,
+            sale.saleEnd
+        );
+
+        // Increment number of registered users
+        registration.numberOfRegistrants++;
+        // Emit Registration event
+        emit UserRegistered(msg.sender);
+    }
+
+    /// @notice     Admin function, to update token price before sale to match the closest $ desired rate.
+    /// @dev        This will be updated with an oracle during the sale every N minutes, so the users will always
+    ///             pay initialy set $ value of the token. This is to reduce reliance on the ETH volatility.
+    function updateTokenPriceInETH(uint256 price) external onlyAdmin {
+        require(price > 0, "Price can not be 0.");
+        // Allowing oracle to run and change the sale value
+        sale.tokenPriceInETH = price;
+        emit TokenPriceSet(price);
+    }
+
+    /// @notice     Admin function to postpone the sale
+    function postponeSale(uint256 timeToShift) external onlyAdmin {
+        require(
+            block.timestamp < sale.saleStart,
+            "sale already started."
+        );
+        //  postpone registration start time
+        sale.saleStart = sale.saleStart.add(timeToShift);
+        require(
+            sale.saleStart + timeToShift < sale.saleEnd,
+            "Start time can not be greater than end time."
+        );
+    }
+
+    /// @notice     Function to extend registration period
+    function extendRegistrationPeriod(uint256 timeToAdd) external onlyAdmin {
+        require(
+            registration.registrationTimeEnds.add(timeToAdd) <
+            sale.saleStart,
+            "Registration period overflows sale start."
+        );
+
+        registration.registrationTimeEnds = registration
+            .registrationTimeEnds
+            .add(timeToAdd);
+    }
+
+    /// @notice     Admin function to set max participation before sale start
+    function setCap(uint256 cap)
+    external
+    onlyAdmin
+    {
+        require(
+            block.timestamp < sale.saleStart,
+            "sale already started."
+        );
+
+        require(cap > 0, "Can't set max participation to 0");
+
+        sale.maxParticipation = cap;
+
+        emit MaxParticipationSet(sale.maxParticipation);
+    }
+
+    // Function for owner to deposit tokens, can be called only once.
+    function depositTokens() external onlySaleOwner {
+        require(
+            !sale.tokensDeposited, "Deposit can be done only once"
+        );
+
+        sale.tokensDeposited = true;
+
+        sale.token.safeTransferFrom(
+            msg.sender,
+            address(this),
+            sale.amountOfTokensToSell
+        );
+    }
 }
