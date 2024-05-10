@@ -430,4 +430,23 @@ contract C2NSale is ReentrancyGuard {
             p.isPortionWithdrawn
         );
     }
+
+    /// @notice     Function to get number of registered users for sale
+    function getNumberOfRegisteredUsers() external view returns (uint256) {
+        return registration.numberOfRegistrants;
+    }
+
+    /// @notice     Function to get all info about vesting.
+    function getVestingInfo()
+    external
+    view
+    returns (uint256[] memory, uint256[] memory)
+    {
+        return (vestingPortionsUnlockTime, vestingPercentPerPortion);
+    }
+
+    // Function to act as a fallback and handle receiving ETH.
+    receive() external payable {
+
+    }
 }
