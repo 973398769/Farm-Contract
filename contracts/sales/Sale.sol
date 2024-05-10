@@ -390,4 +390,44 @@ contract C2NSale is ReentrancyGuard {
             )
         );
     }
+
+    /// @notice     Check who signed the message
+    /// @param      signature is the message allowing user to participate in sale
+    /// @param      user is the address of user for which we're signing the message
+    /// @param      amount is the maximal amount of tokens user can buy
+    function getParticipationSigner(
+        bytes memory signature,
+        address user,
+        uint256 amount
+    ) public view returns (address) {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                user,
+                amount,
+                address(this)
+            )
+        );
+        bytes32 messageHash = hash.toEthSignedMessageHash();
+        return messageHash.recover(signature);
+    }
+
+    /// @notice     Function to get participation for passed user address
+    function getParticipation(address _user)
+    external
+    view
+    returns (
+        uint256,
+        uint256,
+        uint256,
+        bool[] memory
+    )
+    {
+        Participation memory p = userToParticipation[_user];
+        return (
+            p.amountBought,
+            p.amountETHPaid,
+            p.timeParticipated,
+            p.isPortionWithdrawn
+        );
+    }
 }
