@@ -376,6 +376,37 @@ contract C2NSale is ReentrancyGuard {
         );
     }
 
+    // Function to withdraw leftover
+    function withdrawLeftoverInternal() internal {
+        // Make sure sale ended
+        require(block.timestamp >= sale.saleEnd, "sale is not ended yet.");
+
+        // Make sure owner can't withdraw twice
+        require(!sale.leftoverWithdrawn, "owner can't withdraw leftover twice");
+        sale.leftoverWithdrawn = true;
+
+        // Amount of tokens which are not sold
+        uint256 leftover = sale.amountOfTokensToSell.sub(sale.totalTokensSold);
+
+        if (leftover > 0) {
+            sale.token.safeTransfer(msg.sender, leftover);
+        }
+    }
+    
+    /// @notice     Check signature user submits for registration.
+    /// @param      signature is the message signed by the trusted entity (backend)
+    /// @param      user is the address of user which is registering for sale
+    function checkRegistrationSignature(
+        bytes memory signature,
+        address user
+    ) public view returns (bool) {
+        bytes32 hash = keccak256(
+            abi.encodePacked(user, address(this))
+        );
+        bytes32 messageHash = hash.toEthSignedMessageHash();
+        return admin.isAdmin(messageHash.recover(signature));
+    }
+
     function checkParticipationSignature(
         bytes memory signature,
         address user,
