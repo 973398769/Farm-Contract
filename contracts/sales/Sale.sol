@@ -376,6 +376,36 @@ contract C2NSale is ReentrancyGuard {
         );
     }
 
+    /// Function to withdraw all the earnings and the leftover of the sale contract.
+    function withdrawEarningsAndLeftover() external onlySaleOwner {
+        withdrawEarningsInternal();
+        withdrawLeftoverInternal();
+    }
+
+    // Function to withdraw only earnings
+    function withdrawEarnings() external onlySaleOwner {
+        withdrawEarningsInternal();
+    }
+
+    // Function to withdraw only leftover
+    function withdrawLeftover() external onlySaleOwner {
+        withdrawLeftoverInternal();
+    }
+    
+    // function to withdraw earnings
+    function withdrawEarningsInternal() internal {
+        // Make sure sale ended
+        require(block.timestamp >= sale.saleEnd, "sale is not ended yet.");
+
+        // Make sure owner can't withdraw twice
+        require(!sale.earningsWithdrawn, "owner can't withdraw earnings twice");
+        sale.earningsWithdrawn = true;
+        // Earnings amount of the owner in ETH
+        uint256 totalProfit = sale.totalETHRaised;
+
+        safeTransferETH(msg.sender, totalProfit);
+    }
+
     // Function to withdraw leftover
     function withdrawLeftoverInternal() internal {
         // Make sure sale ended
@@ -392,7 +422,7 @@ contract C2NSale is ReentrancyGuard {
             sale.token.safeTransfer(msg.sender, leftover);
         }
     }
-    
+
     /// @notice     Check signature user submits for registration.
     /// @param      signature is the message signed by the trusted entity (backend)
     /// @param      user is the address of user which is registering for sale
