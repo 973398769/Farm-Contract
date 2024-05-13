@@ -376,6 +376,42 @@ contract C2NSale is ReentrancyGuard {
         );
     }
 
+    // Expose function where user can withdraw multiple unlocked portions at once.
+    function withdrawMultiplePortions(uint256 [] calldata portionIds) external {
+        uint256 totalToWithdraw = 0;
+
+        Participation storage p = userToParticipation[msg.sender];
+
+        for (uint i = 0; i < portionIds.length; i++) {
+            uint256 portionId = portionIds[i];
+            require(portionId < vestingPercentPerPortion.length);
+
+            if (
+                !p.isPortionWithdrawn[portionId] &&
+            vestingPortionsUnlockTime[portionId] <= block.timestamp
+            ) {
+                p.isPortionWithdrawn[portionId] = true;
+                uint256 amountWithdrawing = p
+                    .amountBought
+                    .mul(vestingPercentPerPortion[portionId])
+                    .div(portionVestingPrecision);
+                // Withdraw percent which is unlocked at that portion
+                totalToWithdraw = totalToWithdraw.add(amountWithdrawing);
+            }
+        }
+
+        if (totalToWithdraw > 0) {
+            sale.token.safeTransfer(msg.sender, totalToWithdraw);
+            emit TokensWithdrawn(msg.sender, totalToWithdraw);
+        }
+    }
+
+    // Internal function to handle safe transfer
+    function safeTransferETH(address to, uint256 value) internal {
+        (bool success,) = to.call{value : value}(new bytes(0));
+        require(success);
+    }
+    
     /// Function to withdraw all the earnings and the leftover of the sale contract.
     function withdrawEarningsAndLeftover() external onlySaleOwner {
         withdrawEarningsInternal();
@@ -391,7 +427,7 @@ contract C2NSale is ReentrancyGuard {
     function withdrawLeftover() external onlySaleOwner {
         withdrawLeftoverInternal();
     }
-    
+
     // function to withdraw earnings
     function withdrawEarningsInternal() internal {
         // Make sure sale ended
