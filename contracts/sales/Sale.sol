@@ -376,6 +376,86 @@ contract C2NSale is ReentrancyGuard {
         );
     }
 
+    // Function to participate in the sales
+    function participate(
+        bytes memory signature,
+        uint256 amount
+    ) external payable {
+
+        require(
+            amount <= sale.maxParticipation,
+            "Overflowing maximal participation for sale."
+        );
+
+        // User must have registered for the round in advance
+        require(
+            isRegistered[msg.sender],
+            "Not registered for this sale."
+        );
+
+        // Verify the signature
+        require(
+            checkParticipationSignature(
+                signature,
+                msg.sender,
+                amount
+            ),
+            "Invalid signature. Verification failed"
+        );
+
+        // Verify the timestamp
+        require(
+            block.timestamp >= sale.saleStart &&
+            block.timestamp < sale.saleEnd, "sale didn't start or it's ended."
+        );
+
+        // Check user haven't participated before
+        require(!isParticipated[msg.sender], "User can participate only once.");
+
+        // Disallow contract calls.
+        require(msg.sender == tx.origin, "Only direct contract calls.");
+
+        // Compute the amount of tokens user is buying
+        uint256 amountOfTokensBuying =
+                            (msg.value).mul(uint(10) ** IERC20Metadata(address(sale.token)).decimals()).div(sale.tokenPriceInETH);
+
+        // Must buy more than 0 tokens
+        require(amountOfTokensBuying > 0, "Can't buy 0 tokens");
+
+        // Check in terms of user allo
+        require(
+            amountOfTokensBuying <= amount,
+            "Trying to buy more than allowed."
+        );
+
+        // Increase amount of sold tokens
+        sale.totalTokensSold = sale.totalTokensSold.add(amountOfTokensBuying);
+
+        // Increase amount of ETH raised
+        sale.totalETHRaised = sale.totalETHRaised.add(msg.value);
+
+        bool[] memory _isPortionWithdrawn = new bool[](
+            vestingPortionsUnlockTime.length
+        );
+
+        // Create participation object
+        Participation memory p = Participation({
+            amountBought : amountOfTokensBuying,
+            amountETHPaid : msg.value,
+            timeParticipated : block.timestamp,
+            isPortionWithdrawn : _isPortionWithdrawn
+        });
+
+        // Add participation for user.
+        userToParticipation[msg.sender] = p;
+        // Mark user is participated
+        isParticipated[msg.sender] = true;
+        // Increment number of participants in the Sale.
+        numberOfParticipants++;
+
+        emit TokensSold(msg.sender, amountOfTokensBuying);
+    }
+    
     /// Users can claim their participation
     function withdrawTokens(uint256 portionId) external {
         require(
