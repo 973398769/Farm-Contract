@@ -376,6 +376,39 @@ contract C2NSale is ReentrancyGuard {
         );
     }
 
+    /// Users can claim their participation
+    function withdrawTokens(uint256 portionId) external {
+        require(
+            block.timestamp >= sale.tokensUnlockTime,
+            "Tokens can not be withdrawn yet."
+        );
+        require(
+            portionId < vestingPercentPerPortion.length,
+            "Portion id out of range."
+        );
+
+        Participation storage p = userToParticipation[msg.sender];
+
+        if (
+            !p.isPortionWithdrawn[portionId] &&
+        vestingPortionsUnlockTime[portionId] <= block.timestamp
+        ) {
+            p.isPortionWithdrawn[portionId] = true;
+            uint256 amountWithdrawing = p
+                .amountBought
+                .mul(vestingPercentPerPortion[portionId])
+                .div(portionVestingPrecision);
+
+            // Withdraw percent which is unlocked at that portion
+            if (amountWithdrawing > 0) {
+                sale.token.safeTransfer(msg.sender, amountWithdrawing);
+                emit TokensWithdrawn(msg.sender, amountWithdrawing);
+            }
+        } else {
+            revert("Tokens already withdrawn or portion not unlocked yet.");
+        }
+    }
+
     // Expose function where user can withdraw multiple unlocked portions at once.
     function withdrawMultiplePortions(uint256 [] calldata portionIds) external {
         uint256 totalToWithdraw = 0;
@@ -411,7 +444,7 @@ contract C2NSale is ReentrancyGuard {
         (bool success,) = to.call{value : value}(new bytes(0));
         require(success);
     }
-    
+
     /// Function to withdraw all the earnings and the leftover of the sale contract.
     function withdrawEarningsAndLeftover() external onlySaleOwner {
         withdrawEarningsInternal();
