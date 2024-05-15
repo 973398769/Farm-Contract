@@ -455,7 +455,7 @@ contract C2NSale is ReentrancyGuard {
 
         emit TokensSold(msg.sender, amountOfTokensBuying);
     }
-    
+
     /// Users can claim their participation
     function withdrawTokens(uint256 portionId) external {
         require(
