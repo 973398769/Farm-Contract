@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
 contract Airdrop {
-
     using ECDSA for bytes32;
     using SafeMath for *;
 
@@ -16,4 +15,11 @@ contract Airdrop {
     uint256 public constant TOKENS_PER_CLAIM = 100 * 10**18;
 
     event TokensAirdropped(address beneficiary);
+
+    // Constructor, initial setup
+    constructor(address _airdropToken) public {
+        require(_airdropToken != address(0));
+
+        airdropToken = IERC20(_airdropToken);
+    }
 }
