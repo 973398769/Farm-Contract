@@ -16,3 +16,16 @@ async function main() {
     const AllocationStakingImplementation = await ethers.getContractFactory("AllocationStaking");
     const allocationStakingImpl = await AllocationStakingImplementation.deploy();
     await allocationStakingImpl.deployed();
+    console.log("New Implementation:", allocationStakingImpl.address);
+
+    await proxyAdmin.upgrade(allocationStakingProxy, allocationStakingImpl.address);
+    console.log("AllocationStaking contract upgraded");
+}
+
+
+main()
+    .then(() => process.exit(0))
+    .catch(error => {
+        console.error(error);
+        process.exit(1);
+    });
