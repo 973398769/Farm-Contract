@@ -142,7 +142,6 @@ contract Farming is Ownable {
 
         uint256 nrOfSeconds = lastTimestamp.sub(pool.lastRewardTimestamp);
         uint256 erc20Reward = nrOfSeconds.mul(rewardPerSecond).mul(pool.allocPoint).div(totalAllocPoint);
-
         pool.accERC20PerShare = pool.accERC20PerShare.add(erc20Reward.mul(1e36).div(lpSupply));
         pool.lastRewardTimestamp = block.timestamp;
     }
