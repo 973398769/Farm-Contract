@@ -4,7 +4,6 @@ require('@nomiclabs/hardhat-ethers')
 require("@nomiclabs/hardhat-web3")
 require('@openzeppelin/hardhat-upgrades')
 
-
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   networks: {
