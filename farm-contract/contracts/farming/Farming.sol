@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract Farming is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-
     struct UserInfo {
         uint256 amount;
         uint rewardDebt;
